@@ -1,52 +1,66 @@
-import { Text, View, SafeAreaView, TouchableOpacity, FlatList, StyleSheet } from 'react-native';
-
-import { useNavigation } from '@react-navigation/native';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, FlatList, Modal} from 'react-native';
 
 import auth from '@react-native-firebase/auth';
 
+import { useNavigation } from '@react-navigation/native';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 
-export default function Chatroom() {
+import FabButton from '../../components/fabButton';
+import ModalNewRoom from '../../components/modalNewRoom';
 
+export default function ChatRoom() {
   const navigation = useNavigation();
 
+  const [modalVisible, setModalVisible] = useState(false);
+
+
   function handleSignOut(){
-    auth().signOut()
-    .then(() => {
-      navigation.navigate('SignIn')
+    auth()
+    .signOut()
+    .then(()=>{
+      navigation.navigate("SignIn")
     })
-    .catch(err => console.log(err))
+    .catch(()=>{
+      console.log("NAO POSSUI NENHUM USUARIO")
+    })
   }
 
-  return (
-    <SafeAreaView>
+ return (
 
-      <View style={styles.headerRoom}>
+   <SafeAreaView style={styles.container}>
+
+     <View style={styles.headerRoom}>
 
         <View style={styles.headerRoomLeft}>
 
           <TouchableOpacity onPress={handleSignOut}>
-            <MaterialIcons name="arrow-back" size={28} color="#fff"/>
+            <MaterialIcons name="arrow-back" size={28} color="#FFF"/>
           </TouchableOpacity>
 
           <Text style={styles.title}>Grupos</Text>
-          
+
         </View>
 
-        
         <TouchableOpacity>
-          <MaterialIcons name="search" size={28} color="#fff"/>
+          <MaterialIcons name="search" size={28} color="#FFF"/>
         </TouchableOpacity>
 
-      </View>
+     </View>
 
-    </SafeAreaView>
+
+     <FabButton setVisible={ () => setModalVisible(true) } />
+
+      <Modal visible={modalVisible} animationType='fade' transparent={true}>
+        <ModalNewRoom setVisible={ () => setModalVisible(false) }/>
+      </Modal>
+   </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container:{
-    flex: 1
+    flex:1,
   },
   headerRoom:{
     flexDirection: 'row',
@@ -54,7 +68,7 @@ const styles = StyleSheet.create({
     paddingTop: 40,
     paddingBottom: 20,
     paddingHorizontal: 10,
-    backgroundColor: '#2e54d4',
+    backgroundColor: '#2E54D4',
     borderBottomRightRadius: 20,
     borderBottomLeftRadius: 20,
   },
@@ -65,7 +79,7 @@ const styles = StyleSheet.create({
   title:{
     fontSize: 26,
     fontWeight: 'bold',
-    color: '#fff',
+    color: '#FFF',
     paddingLeft: 10,
   }
 })
