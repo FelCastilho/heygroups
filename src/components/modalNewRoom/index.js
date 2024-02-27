@@ -1,10 +1,54 @@
 import { useState } from 'react';
 import { View, Text, StyleSheet, TextInput, TouchableWithoutFeedback, TouchableOpacity } from 'react-native';
 
+import firestore from '@react-native-firebase/firestore';
+import auth from '@react-native-firebase/auth';
+
 export default function ModalNewRoom({ setVisible }) {
 
     const [ roomName, setRoomName ] = useState('');
+
+    const user = auth().currentUser.toJSON();
+
+
+    //Criando a sala
+    function handleButtonCreate(){
+
+        if(roomName === '') return;
+
+        //Criando a sala
+        createRoom();
+    }
+
+    //Criar nova sala no firestore
+    function createRoom(){  
+        firestore().collection('MESSAGE_THREADS').add({
+            //.add Permite gerar um ID unico para cada sala
+            name: roomName,
+            owner: user.uid,
+            lastMessage: {
+                text: `Grupo: ${roomName} criado. Bem vindo(a)`,
+                //Pegando o horario do servidor
+                createdAt: firestore.FieldValue.serverTimestamp()
+            },
+        })
+        .then((docRef) => {
+            docRef.collection('MESSAGES').add({
+                text: `Grupo: ${roomName} criado. Bem vindo(a)`,
+                createdAt: firestore.FieldValue.serverTimestamp(),
+                system: true,
+            })
+            .then(() => {
+                setVisible();
+            })
+            .catch(error => console.log(error))
+            
+        })
+        .catch(error => console.log(error))
+    }
+
     return (
+
         <View style={styles.container}>
 
             <TouchableWithoutFeedback onPress={setVisible}>
@@ -23,8 +67,18 @@ export default function ModalNewRoom({ setVisible }) {
                     style={styles.input}
                 />
 
-                <TouchableOpacity style={styles.buttonCreate}>
+                <TouchableOpacity 
+                style={styles.buttonCreate}
+                onPress={handleButtonCreate}
+                >
                     <Text style={styles.buttonText}>Criar sala</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity 
+                    style={styles.backButton}
+                    onPress={setVisible}
+                >
+                    <Text>Voltar</Text>
                 </TouchableOpacity>
             </View>
 
@@ -70,5 +124,10 @@ const styles = StyleSheet.create({
         fontSize: 19,
         fontWeight: 'bold',
         color: '#fff'
+    },
+    backButton:{
+        marginTop: 10,
+        alignItems: 'center',
+        justifyContent: 'center'
     }
 })

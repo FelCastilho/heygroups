@@ -1,68 +1,144 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, FlatList, Modal} from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, FlatList, Modal, ActivityIndicator } from 'react-native';
 
 import auth from '@react-native-firebase/auth';
+import firestore from '@react-native-firebase/firestore';
 
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useIsFocused } from '@react-navigation/native';
+
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 
 import FabButton from '../../components/fabButton';
 import ModalNewRoom from '../../components/modalNewRoom';
+import ChatList from '../../components/chatList';
 
 export default function ChatRoom() {
+
   const navigation = useNavigation();
+  const isFocused = useIsFocused();
 
+  const [user, setUser] = useState(null);
   const [modalVisible, setModalVisible] = useState(false);
+  const [threads, setThreads] = useState([]);
+  const [loading, setLoading] = useState(true);
 
+  useEffect(() => {
 
-  function handleSignOut(){
+    //Verificando se tem algum usuário logado
+    const hasUser = auth().currentUser ? auth().currentUser.toJSON() : null;
+
+    setUser(hasUser);
+
+  }, [isFocused]) //Quando a tela for TRUE
+
+  //Buscando os chats no firestore
+  useEffect(() => {
+
+    let isActive = true;
+
+    function getChats() {
+
+      firestore().collection('MESSAGE_THREADS')
+        .orderBy('lastMessage.createdAt', 'desc').limit(10).get()
+        .then(snapshot => {
+
+          const threads = snapshot.docs.map(documentSnapshot => {
+            return {
+              _id: documentSnapshot.id,
+              name: '',
+              lastMessage: { text: '' },
+              ...documentSnapshot.data()
+            }
+          })
+
+          if (isActive) {
+            setThreads(threads);
+            setLoading(false);
+
+            //Retorna os grupos
+            //console.log(threads)
+          }
+
+        })
+
+    }
+
+    getChats();
+
+    //Quando o componente for desmontado
+    //(Evita perder performance com o useEffect)
+    return () => isActive = false;
+
+  }, [isFocused])//Quando o componente estiver em foco
+
+  function handleSignOut() {
     auth()
-    .signOut()
-    .then(()=>{
-      navigation.navigate("SignIn")
-    })
-    .catch(()=>{
-      console.log("NAO POSSUI NENHUM USUARIO")
-    })
+      .signOut()
+      .then(() => {
+        setUser(null);
+        navigation.navigate("SignIn")
+      })
+      .catch(() => {
+        console.log("NAO POSSUI NENHUM USUARIO")
+      })
   }
 
- return (
+  if(loading){
+    return(
+      <ActivityIndicator size='large' color="555"/>
+    )
+  }
 
-   <SafeAreaView style={styles.container}>
+  return (
 
-     <View style={styles.headerRoom}>
+    <SafeAreaView style={styles.container}>
+
+      <View style={styles.headerRoom}>
 
         <View style={styles.headerRoomLeft}>
 
-          <TouchableOpacity onPress={handleSignOut}>
-            <MaterialIcons name="arrow-back" size={28} color="#FFF"/>
-          </TouchableOpacity>
+          {user && (
+            <TouchableOpacity onPress={handleSignOut}>
+              <MaterialIcons name="arrow-back" size={28} color="#FFF" />
+            </TouchableOpacity>
+          )}
 
           <Text style={styles.title}>Grupos</Text>
 
         </View>
 
         <TouchableOpacity>
-          <MaterialIcons name="search" size={28} color="#FFF"/>
+          <MaterialIcons name="search" size={28} color="#FFF" />
         </TouchableOpacity>
 
-     </View>
+      </View>
 
+      <FlatList
+      data={threads}
+      keyExtractor={item => item._id} //id de cada sala
+      showsVerticalScrollIndicator={false}
+      renderItem={({ item }) => (
+        <ChatList data={item} />
+      )}
+      />
 
-     <FabButton setVisible={ () => setModalVisible(true) } />
+      <FabButton setVisible={() => setModalVisible(true)} userStatus={user} />
 
       <Modal visible={modalVisible} animationType='fade' transparent={true}>
-        <ModalNewRoom setVisible={ () => setModalVisible(false) }/>
+        <ModalNewRoom setVisible={() => setModalVisible(false)} />
       </Modal>
-   </SafeAreaView>
+
+    </SafeAreaView>
+
   );
 }
 
 const styles = StyleSheet.create({
-  container:{
-    flex:1,
+  container: {
+    flex: 1,
+    backgroundColor: '#fff'
   },
-  headerRoom:{
+  headerRoom: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     paddingTop: 40,
@@ -72,11 +148,11 @@ const styles = StyleSheet.create({
     borderBottomRightRadius: 20,
     borderBottomLeftRadius: 20,
   },
-  headerRoomLeft:{
+  headerRoomLeft: {
     flexDirection: 'row',
     alignItems: 'center'
   },
-  title:{
+  title: {
     fontSize: 26,
     fontWeight: 'bold',
     color: '#FFF',
