@@ -1,10 +1,10 @@
 import { useState } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableWithoutFeedback, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TextInput, TouchableWithoutFeedback, TouchableOpacity, Alert } from 'react-native';
 
 import firestore from '@react-native-firebase/firestore';
 import auth from '@react-native-firebase/auth';
 
-export default function ModalNewRoom({ setVisible }) {
+export default function ModalNewRoom({ setVisible, setUpdateScreen }) {
 
     const [ roomName, setRoomName ] = useState('');
 
@@ -16,8 +16,28 @@ export default function ModalNewRoom({ setVisible }) {
 
         if(roomName === '') return;
 
-        //Criando a sala
-        createRoom();
+        //Limitando a criação de apenas 4 grupos por usuário;
+
+        firestore().collection('MESSAGE_THREADS').get()
+        .then( snapshot => {
+
+            let myThreads = 0;
+
+            snapshot.docs.map( docItem => {
+                //Verificando se o id da pessoa que ta criando a sala é o mesmo do que está logado;
+                if(docItem.data().owner === user.uid){
+                    myThreads += 1
+                }
+            })
+
+            if(myThreads >= 4){
+                Alert.alert('Limite por usuário atingido')
+            }else{
+                //Criando a sala
+                createRoom();
+            }
+
+        })
     }
 
     //Criar nova sala no firestore
@@ -40,6 +60,8 @@ export default function ModalNewRoom({ setVisible }) {
             })
             .then(() => {
                 setVisible();
+                //Informando pro useEffect que houve uma alteração na criação de sala
+                setUpdateScreen();
             })
             .catch(error => console.log(error))
             

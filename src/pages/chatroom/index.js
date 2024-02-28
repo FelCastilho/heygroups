@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, FlatList, Modal, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, FlatList, Modal, ActivityIndicator, Alert } from 'react-native';
 
 import auth from '@react-native-firebase/auth';
 import firestore from '@react-native-firebase/firestore';
@@ -21,6 +21,9 @@ export default function ChatRoom() {
   const [modalVisible, setModalVisible] = useState(false);
   const [threads, setThreads] = useState([]);
   const [loading, setLoading] = useState(true);
+  //Fazendo uma verificação para quando algum grupo for atualizado
+  //Colocar threads como dependencia no useEffect também funciona
+  const [ updateScreen, setUpdateScreen ] = useState(false);
 
   useEffect(() => {
 
@@ -69,7 +72,7 @@ export default function ChatRoom() {
     //(Evita perder performance com o useEffect)
     return () => isActive = false;
 
-  }, [isFocused])//Quando o componente estiver em foco
+  }, [isFocused, updateScreen])//Quando o componente estiver em foco
 
   function handleSignOut() {
     auth()
@@ -81,6 +84,33 @@ export default function ChatRoom() {
       .catch(() => {
         console.log("NAO POSSUI NENHUM USUARIO")
       })
+  }
+
+  function deleteRoom(ownerId, idRoom){
+    //Caso esteja tentando deletar uma sala onde não seja o dono
+    if(ownerId !== user?.uid) return;
+
+    Alert.alert(
+      "Atenção!",
+      "Você tem certeza que deseja deletar essa sala?",
+      [
+        {
+          text: 'Cancel',
+          onPress: () => {},
+          style: 'cancel'
+        },
+        {
+          text: 'Ok',
+          onPress: () => handleDeleteRoom(idRoom),
+        }
+      ]
+    )
+
+  }
+
+  async function handleDeleteRoom(idRoom){
+    await firestore().collection('MESSAGE_THREADS').doc(idRoom).delete();
+    setUpdateScreen(!updateScreen);
   }
 
   if(loading){
@@ -118,14 +148,19 @@ export default function ChatRoom() {
       keyExtractor={item => item._id} //id de cada sala
       showsVerticalScrollIndicator={false}
       renderItem={({ item }) => (
-        <ChatList data={item} />
+        <ChatList data={item} deleteRoom={() => deleteRoom(item.owner, item._id)} userStatus={user}/>
       )}
       />
 
       <FabButton setVisible={() => setModalVisible(true)} userStatus={user} />
 
       <Modal visible={modalVisible} animationType='fade' transparent={true}>
-        <ModalNewRoom setVisible={() => setModalVisible(false)} />
+
+        <ModalNewRoom 
+          setVisible={() => setModalVisible(false)} 
+          setUpdateScreen={() => setUpdateScreen(!updateScreen)}
+        />
+
       </Modal>
 
     </SafeAreaView>
