@@ -4,6 +4,7 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import SignIn from "../pages/signIn";
 import Chatroom from "../pages/chatroom";
 import Messages from "../pages/messages";
+import Search from "../pages/search";
 
 const AppStack = createNativeStackNavigator();
 
@@ -33,6 +34,14 @@ function AppRoutes() {
                 options={({ route }) => ({
                     title: route.params.thread.name
                 })}
+            />
+
+            <AppStack.Screen
+                name="Search"
+                component={Search}
+                options={{
+                    title: 'Procurando algum grupo?'
+                }}
             />
 
         </AppStack.Navigator>
